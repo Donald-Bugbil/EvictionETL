@@ -46,11 +46,11 @@ def workflow():
         Client=session.client('s3')
         response=Client.get_object(Bucket=BUCKET_NAME, Key='Eviction_Notices_20250619.csv')['Body'].read()
         Bytes_format=io.BytesIO(response)
-        data_frame=pd.read_csv(Bytes_format, dtype=str)
+        data_frame=pd.read_csv(Bytes_format, low_memory=False)
         task_logger.info(data_frame)
         task_logger.info(f"DataFrame is generated successfully")
         return data_frame
     
-    Initiaze_DB=database_initialization()
-    extraction=extract()
-workflow()
+#     Initiaze_DB=database_initialization()
+#     extraction=extract()
+# workflow()
