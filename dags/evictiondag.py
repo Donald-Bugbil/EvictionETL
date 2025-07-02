@@ -1,13 +1,12 @@
 # Import necessary packages 
 
-import boto3.session
 import pandas as pd
 import pendulum
-import boto3
 from airflow.decorators import task, dag
 import logging
-from aws_config.aws import ACCESS_KEY, SECRET_KEY, BUCKET_NAME
 from database_config.database import database_initialize
+from Clients.client import get_redshift_client, get_s3_client
+from aws_config.aws import  BUCKET_NAME
 import io
 
 
@@ -42,15 +41,14 @@ def workflow():
     @task()
     #This task pulls the raw data, convetrs it into Bytes format and then into csv
     def extract():
-        session=boto3.Session(aws_access_key_id=ACCESS_KEY, aws_secret_access_key=SECRET_KEY)
-        Client=session.client('s3')
-        response=Client.get_object(Bucket=BUCKET_NAME, Key='Eviction_Notices_20250619.csv')['Body'].read()
+        s3_client=get_s3_client()
+        response=s3_client.get_object(Bucket=BUCKET_NAME, Key='Eviction_Notices_20250619.csv')['Body'].read()
         Bytes_format=io.BytesIO(response)
         data_frame=pd.read_csv(Bytes_format, low_memory=False)
         task_logger.info(data_frame)
         task_logger.info(f"DataFrame is generated successfully")
         return data_frame
     
-#     Initiaze_DB=database_initialization()
-#     extraction=extract()
-# workflow()
+    Initiaze_DB=database_initialization()
+    extraction=extract()
+workflow()
