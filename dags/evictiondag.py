@@ -7,7 +7,10 @@ import logging
 from database_config.database import database_initialize
 from Clients.client import get_redshift_client, get_s3_client
 from aws_config.aws import  BUCKET_NAME
+from sqlalchemy.orm import Session
+from database_config.database import engine
 from utilities.funtions import boolens, clean_zip, state, clean_city, extract_lat_lon, extract_lat_lon_from_shape
+from schemas.schema import Eviction
 import io
 
 
@@ -48,9 +51,10 @@ def workflow():
         data_frame=pd.read_csv(Bytes_format, low_memory=False)
         task_logger.info(data_frame)
         task_logger.info(f"DataFrame is generated successfully")
+        task_logger.info(f"DataFrame columns: {data_frame.columns.tolist()}")
         return data_frame
     
-
+    #This task cleans and transformed the data to be loaded into the DB
     @task()
     def transform(data_frame):
         new_data_frame=data_frame.copy()
@@ -125,9 +129,75 @@ def workflow():
 
         task_logger.info(new_data_frame)
         task_logger.info(f"Transformation is completed succesfully and ready to be loaded")
+        task_logger.info(f"DataFrame columns: {new_data_frame.columns.tolist()}")
        
 
         return new_data_frame
+    
+    #This task loads the clean and transformed data
+    @task()
+    def load(transformed_data, database_state):
+        #redshift_client=get_redshift_client()
+
+        data_to_insert=[] #empty list to populate the data into each row
+
+        def create_object(row):
+
+            eviction=Eviction(
+            eviction_id=row['Eviction ID'],
+            address=row['Address'],
+            city=row['City'],
+            state=row['State'],
+            eviction_notice_zipcode=row['Eviction Notice Source Zipcode'],
+            file_date=row['File Date'],
+            non_payment=row['Non Payment'],
+            breach=row['Breach'],
+            nuisance=row['Nuisance'],
+            illegal_use=row['Illegal Use'],
+            failure_to_sign_renewal=row['Failure to Sign Renewal'],
+            access_denial=row['Access Denial'],
+            unapproved_subtenant=row['Unapproved Subtenant'],
+            owner_move_in=row['Owner Move In'],
+            demolition=row['Demolition'],
+            capital_improvement=row['Capital Improvement'],
+            substantial_rehab=row['Substantial Rehab'],
+            ellis_act_withdrawal=row['Ellis Act WithDrawal'],
+            condo_conversion=row['Condo Conversion'],
+            roomate_same_unit=row['Roommate Same Unit'],
+            other_cause=row['Other Cause'],
+            late_payments=row['Late Payments'],
+            lead_remediation=row['Lead Remediation'],
+            development=row['Development'],
+            good_samaritan_ends=row['Good Samaritan Ends'],
+            constraints_date=row['Constraints Date'],
+            data_as_of=row['data_as_of'],
+            data_loaded_at=row['data_loaded_at'],
+            location_latitude=row['Location_Latitude'],
+            location_longitude=row['Location_Longitude'],
+            shape_latitude=row['Shape_Latitude'],
+            shape_longitude=row['Shape_Longitude']
+
+            )
+
+            data_to_insert.append(eviction)
+            task_logger.info(data_to_insert[0].eviction_id)
+
+        if database_state is True:
+            data_to_load=transformed_data
+            task_logger.info(data_to_load)
+            task_logger.info(f"Database in ready to load")
+            data_to_load.apply(lambda row: create_object(row), axis =1)
+
+            with Session(engine) as session:
+                session.add_all(data_to_insert)
+                session.commit()
+                task_logger.info(f"data loaded successfully")
+                return "load complete"
+        else:
+            task_logger.warning(f"Database not initiliazed.skipping load")
+            return "Skipped load due to Database error"
+
+
         
     
 
@@ -135,4 +205,5 @@ def workflow():
     Initiaze_DB=database_initialization()
     extraction=extract()
     transformation=transform(extraction)
+    load(transformation, Initiaze_DB)
 workflow()
