@@ -31,7 +31,7 @@ class Eviction(Base):
     condo_conversion=Column(Integer)
     roomate_same_unit=Column(Integer)
     other_cause=Column(Integer)
-    late_payment=Column(Integer)
+    late_payments=Column(Integer)
     lead_remediation=Column(Integer)
     development=Column(Integer)
     good_samaritan_ends=Column(Integer)
