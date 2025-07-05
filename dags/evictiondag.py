@@ -127,6 +127,9 @@ def workflow():
         #drop original shape columnn
         new_data_frame.drop(columns=['Shape'], inplace=True)
 
+        #drop null in Address column which doesn't impact decision
+        new_data_frame.dropna(subset=['Address'], inplace=True)
+
         task_logger.info(new_data_frame)
         task_logger.info(f"Transformation is completed succesfully and ready to be loaded")
         task_logger.info(f"DataFrame columns: {new_data_frame.columns.tolist()}")
