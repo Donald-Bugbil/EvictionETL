@@ -9,7 +9,7 @@ from Clients.client import get_redshift_client, get_s3_client
 from aws_config.aws import  BUCKET_NAME
 from sqlalchemy.orm import Session
 from database_config.database import engine
-from utilities.funtions import boolens, clean_zip, state, clean_city, extract_lat_lon, extract_lat_lon_from_shape
+from utilities.funtions import boolens, clean_zip, state, clean_city, extract_lat_lon, extract_lat_lon_from_shape, upload_to_s3, create_redshift_table, load_to_redshift
 from schemas.schema import Eviction
 import io
 
@@ -137,68 +137,94 @@ def workflow():
 
         return new_data_frame
     
+    @task()
+    def prepare_data_for_load(transformed_data):
+        """
+        This task prepares the data to be loaded into the database
+        """
+
+        key = 'transformed_eviction_data.csv'
+
+        s3_path = upload_to_s3(transform_dataframe=transformed_data, bucket_name=BUCKET_NAME, key=key)
+
+        return s3_path
+    
+
+    @task()
+    def create_table():
+
+        create_redshift_table()
+        
+    
+
+        # Convert DataFrame to a list of dictionaries
+        # data_to_load = transformed_data.to_dict(orient='records')
+        # task_logger.info(f"Data prepared for loading: {data_to_load[:5]}")
+    
     #This task loads the clean and transformed data
     @task()
-    def load(transformed_data, database_state):
+    def load(s3_path, table_name):
         #redshift_client=get_redshift_client()
 
-        data_to_insert=[] #empty list to populate the data into each row
+        # data_to_insert=[] #empty list to populate the data into each row
 
-        def create_object(row):
+        # def create_object(row):
 
-            eviction=Eviction(
-            eviction_id=row['Eviction ID'],
-            address=row['Address'],
-            city=row['City'],
-            state=row['State'],
-            eviction_notice_zipcode=row['Eviction Notice Source Zipcode'],
-            file_date=row['File Date'],
-            non_payment=row['Non Payment'],
-            breach=row['Breach'],
-            nuisance=row['Nuisance'],
-            illegal_use=row['Illegal Use'],
-            failure_to_sign_renewal=row['Failure to Sign Renewal'],
-            access_denial=row['Access Denial'],
-            unapproved_subtenant=row['Unapproved Subtenant'],
-            owner_move_in=row['Owner Move In'],
-            demolition=row['Demolition'],
-            capital_improvement=row['Capital Improvement'],
-            substantial_rehab=row['Substantial Rehab'],
-            ellis_act_withdrawal=row['Ellis Act WithDrawal'],
-            condo_conversion=row['Condo Conversion'],
-            roomate_same_unit=row['Roommate Same Unit'],
-            other_cause=row['Other Cause'],
-            late_payments=row['Late Payments'],
-            lead_remediation=row['Lead Remediation'],
-            development=row['Development'],
-            good_samaritan_ends=row['Good Samaritan Ends'],
-            constraints_date=row['Constraints Date'],
-            data_as_of=row['data_as_of'],
-            data_loaded_at=row['data_loaded_at'],
-            location_latitude=row['Location_Latitude'],
-            location_longitude=row['Location_Longitude'],
-            shape_latitude=row['Shape_Latitude'],
-            shape_longitude=row['Shape_Longitude']
+        #     eviction=Eviction(
+        #     eviction_id=row['Eviction ID'],
+        #     address=row['Address'],
+        #     city=row['City'],
+        #     state=row['State'],
+        #     eviction_notice_zipcode=row['Eviction Notice Source Zipcode'],
+        #     file_date=row['File Date'],
+        #     non_payment=row['Non Payment'],
+        #     breach=row['Breach'],
+        #     nuisance=row['Nuisance'],
+        #     illegal_use=row['Illegal Use'],
+        #     failure_to_sign_renewal=row['Failure to Sign Renewal'],
+        #     access_denial=row['Access Denial'],
+        #     unapproved_subtenant=row['Unapproved Subtenant'],
+        #     owner_move_in=row['Owner Move In'],
+        #     demolition=row['Demolition'],
+        #     capital_improvement=row['Capital Improvement'],
+        #     substantial_rehab=row['Substantial Rehab'],
+        #     ellis_act_withdrawal=row['Ellis Act WithDrawal'],
+        #     condo_conversion=row['Condo Conversion'],
+        #     roomate_same_unit=row['Roommate Same Unit'],
+        #     other_cause=row['Other Cause'],
+        #     late_payments=row['Late Payments'],
+        #     lead_remediation=row['Lead Remediation'],
+        #     development=row['Development'],
+        #     good_samaritan_ends=row['Good Samaritan Ends'],
+        #     constraints_date=row['Constraints Date'],
+        #     data_as_of=row['data_as_of'],
+        #     data_loaded_at=row['data_loaded_at'],
+        #     location_latitude=row['Location_Latitude'],
+        #     location_longitude=row['Location_Longitude'],
+        #     shape_latitude=row['Shape_Latitude'],
+        #     shape_longitude=row['Shape_Longitude']
 
-            )
+        #     )
 
-            data_to_insert.append(eviction)
-            task_logger.info(data_to_insert[0].eviction_id)
+        #     data_to_insert.append(eviction)
+        #     task_logger.info(data_to_insert[0].eviction_id)
 
-        if database_state is True:
-            data_to_load=transformed_data
-            task_logger.info(data_to_load)
-            task_logger.info(f"Database in ready to load")
-            data_to_load.apply(lambda row: create_object(row), axis =1)
+        # if database_state is True:
+        #     data_to_load=transformed_data
+        #     task_logger.info(data_to_load)
+        #     task_logger.info(f"Database in ready to load")
+        #     data_to_load.apply(lambda row: create_object(row), axis =1)
 
-            with Session(engine) as session:
-                session.add_all(data_to_insert)
-                session.commit()
-                task_logger.info(f"data loaded successfully")
-                return "load complete"
-        else:
-            task_logger.warning(f"Database not initiliazed.skipping load")
-            return "Skipped load due to Database error"
+        #     with Session(engine) as session:
+        #         session.add_all(data_to_insert)
+        #         session.commit()
+        #         task_logger.info(f"data loaded successfully")
+        #         return "load complete"
+        # else:
+        #     task_logger.warning(f"Database not initiliazed.skipping load")
+        #     return "Skipped load due to Database error"
+
+        load_to_redshift(s3_path=s3_path, table_name=table_name)
 
 
         
