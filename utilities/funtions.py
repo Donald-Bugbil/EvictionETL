@@ -114,6 +114,8 @@ def load_to_redshift(s3_path, table_name):
         redshift_conn_id='redshift_default'
     )
 
+    def test():
+        pass
     hook.get_cursor().execute(
         f"""
         COPY {table_name}
