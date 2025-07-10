@@ -4,11 +4,11 @@ import pandas as pd
 import pendulum
 from airflow.decorators import task, dag
 import logging
-from database_config.database import database_initialize
+
 from Clients.client import get_redshift_client, get_s3_client
 from aws_config.aws import  BUCKET_NAME
 from sqlalchemy.orm import Session
-from database_config.database import engine
+
 from utilities.funtions import boolens, clean_zip, state, clean_city, extract_lat_lon, extract_lat_lon_from_shape, upload_to_s3, create_redshift_table, load_to_redshift
 from schemas.schema import Eviction
 import io
@@ -16,6 +16,8 @@ import io
 
 #task logger
 task_logger=logging.getLogger('workflow.task')
+
+table_name = 'eviction'
 
 @dag(
     schedule='@daily',
@@ -33,7 +35,7 @@ def workflow():
     #establishing the database connection
     def database_initialization():
         try:
-            database_initialize()
+            
             task_logger.info(f'database is connected successfully:{True}')
             return True
         except Exception as e:
@@ -231,8 +233,12 @@ def workflow():
     
 
 
-    Initiaze_DB=database_initialization()
+    #Initiaze_DB=database_initialization()
+    create_table()
     extraction=extract()
     transformation=transform(extraction)
-    load(transformation, Initiaze_DB)
+    file_path = prepare_data_for_load(transformed_data=transformation)
+    load(file_path, table_name=table_name)
+
+    
 workflow()
