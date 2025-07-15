@@ -80,6 +80,7 @@ def extract_lat_lon_from_shape(shape_str):
 
 #is to save the transformed dataframe to csv and return the path
 def upload_to_s3(transform_dataframe: pd.DataFrame,key, bucket_name):
+    
     s3 = s3fs.S3FileSystem(anon=False, secret=SECRET_KEY, key=ACCESS_KEY)
 
     #construct an s3 file path
@@ -120,18 +121,64 @@ def load_to_redshift(s3_path, table_name):
     )
 
 
-
+    try:
    
-    with hook.get_conn() as conn:
+        with hook.get_conn() as conn:
 
-        cursor = conn.cursor()
+            cursor = conn.cursor()
 
-        copy_query = f"""
+            copy_query = f"""
+                COPY {table_name} (
 
-        COPY {table_name}
-        FROM {s3_path}
-
+                eviction_id,         
+                address,              
+                city,                    
+                state,                        
+                eviction_notice_zipcode,       
+                file_date,               
+                non_payment,                  
+                breach,                           
+                nuisance,                         
+                illegal_use,                      
+                failure_to_sign_renewal,          
+                access_denial,                    
+                unapproved_subtenant,             
+                owner_move_in,                    
+                demolition,                    
+                capital_improvement,             
+                substantial_rehab,                 
+                ellis_act_withdrawal,             
+                condo_conversion,               
+                roommate_same_unit,             
+                other_cause,                     
+                late_payments,                   
+                lead_remediation,                 
+                development,                  
+                good_samaritan_ends,               
+                constraints_date,         
+                data_as_of,               
+                data_loaded_at,           
+                location_latitude,            
+                location_longitude,             
+                shape_latitude,               
+                shape_longitude                     
+                )
+                FROM '{s3_path}'
+                IAM_ROLE 'arn:aws:iam::832928244233:role/redshiftS3FullAccess'
+                REGION 'us-east-2'
+                FORMAT AS CSV
+                DELIMITER ','
+                IGNOREHEADER 1;
                 """
+            
+
+
+            cursor.execute(copy_query)
+            conn.commit()
+    
+    except Exception as e:
+        raise Exception(f'Error loading data to redshift table {table_name}: {e}')
+
 
     
     

@@ -19,6 +19,91 @@ task_logger=logging.getLogger('workflow.task')
 
 table_name = 'eviction'
 
+new_data_frame = ''
+
+#  id=Column(Integer, primary_key=True, autoincrement=True)
+#     eviction_id=Column(String)
+#     address=Column(String)
+#     city=Column(String)
+#     state=Column(String)
+#     eviction_notice_zipcode=Column(Integer)
+#     file_date=Column(DateTime)
+#     non_payment=Column(Integer)
+#     breach=Column(Integer)
+#     nuisance=Column(Integer)
+#     illegal_use=Column(Integer)
+#     failure_to_sign_renewal=Column(Integer)
+#     access_denial=Column(Integer)
+#     unapproved_subtenant=Column(Integer)
+#     owner_move_in=Column(Integer)
+#     demolition=Column(Integer)
+#     capital_improvement=Column(Integer)
+#     substantial_rehab=Column(Integer)
+#     ellis_act_withdrawal=Column(Integer)
+#     condo_conversion=Column(Integer)
+#     roomate_same_unit=Column(Integer)
+#     other_cause=Column(Integer)
+#     late_payments=Column(Integer)
+#     lead_remediation=Column(Integer)
+#     development=Column(Integer)
+#     good_samaritan_ends=Column(Integer)
+#     constraints_date=Column(DateTime)
+#     data_as_of=Column(DateTime)
+#     data_loaded_at=Column(DateTime)
+#     location_latitude=Column(Float)
+#     location_longitude=Column(Float)
+#     shape_latitude=Column(Float)
+#     shape_longitude=Column(Float)
+
+
+# #['Eviction ID', 'Address', 'City', 'State',
+#        'Eviction Notice Source Zipcode', 'File Date', 'Non Payment', 'Breach',
+#        'Nuisance', 'Illegal Use', 'Failure to Sign Renewal', 'Access Denial',
+#        'Unapproved Subtenant', 'Owner Move In', 'Demolition',
+#        'Capital Improvement', 'Substantial Rehab', 'Ellis Act WithDrawal',
+#        'Condo Conversion', 'Roommate Same Unit', 'Other Cause',
+#        'Late Payments', 'Lead Remediation', 'Development',
+#        'Good Samaritan Ends', 'Constraints Date', 'data_as_of',
+#        'data_loaded_at', 'Location_Latitude', 'Location_Longitude',
+#        'Shape_Latitude', 'Shape_Longitude'],
+#       dtype='object')
+
+column_names = {
+    'Eviction ID': 'eviction_id',
+    'Address': 'address',
+    'City': 'city',
+    'State': 'state',
+    'Eviction Notice Source Zipcode': 'eviction_notice_zipcode',
+    'File Date': 'file_date',
+    'Non Payment': 'non_payment',
+    'Breach': 'breach',
+    'Nuisance': 'nuisance',
+    'Illegal Use': 'illegal_use',
+    'Failure to Sign Renewal': 'failure_to_sign_renewal',
+    'Access Denial': 'access_denial',
+    'Unapproved Subtenant': 'unapproved_subtenant',
+    'Owner Move In': 'owner_move_in',
+    'Demolition': 'demolition',
+    'Capital Improvement': 'capital_improvement',
+    'Substantial Rehab': 'substantial_rehab',
+    'Ellis Act WithDrawal': 'ellis_act_withdrawal',
+    'Condo Conversion': 'condo_conversion',
+    'Roommate Same Unit': 'roommate_same_unit',
+    'Other Cause': 'other_cause',
+    'Late Payments': 'late_payments',
+    'Lead Remediation': 'lead_remediation',
+    'Development': 'development',
+    'Good Samaritan Ends': 'good_samaritan_ends',
+    'Constraints Date': 'constraints_date',
+    'data_as_of': 'data_as_of',
+    'data_loaded_at': 'data_loaded_at',
+    'Location_Latitude': 'location_latitude',
+    'Location_Longitude': 'location_longitude',
+    'Shape_Latitude': 'shape_latitude',
+    'Shape_Longitude': 'shape_longitude'
+
+}
+
 
 
 @dag(
@@ -56,13 +141,30 @@ def workflow():
         task_logger.info(data_frame)
         task_logger.info(f"DataFrame is generated successfully")
         task_logger.info(f"DataFrame columns: {data_frame.columns.tolist()}")
+
         return data_frame
+    
     
     #This task cleans and transformed the data to be loaded into the DB
     @task()
     def transform(data_frame):
-        new_data_frame=data_frame.copy()
+        new_data_frame: pd.DataFrame = data_frame
+
+        string_columms = ['eviction_id', 'address', 'city', 'state']
+
+        boolean_columns = ['non_payment', 'breach', 'nuisance', 'illegal_use', 'failure_to_sign_renewal',
+                           'access_denial', 'unapproved_subtenant', 'owner_move_in', 'demolition',
+                           'capital_improvement', 'substantial_rehab', 'ellis_act_withdrawal',
+                           'condo_conversion', 'roommate_same_unit', 'other_cause', 'late_payments',
+                           'lead_remediation', 'development', 'good_samaritan_ends',  'eviction_notice_zipcode']
         
+        # date_columns = ['file_date', 'constraints_date', 'data_as_of', 'data_loaded_at']
+        date_columns = ['file_date', 'constraints_date'] 
+        date_time_columns = ['data_as_of', 'data_loaded_at']
+
+        float_columns = ['location_latitude', 'location_longitude', 'shape_latitude', 'shape_longitude']
+
+
         #Drop the columns that has no influence to the data
         
         new_data_frame.drop(['Supervisor District', 'Neighborhoods - Analysis Boundaries', 'SF Find Neighborhoods','Current Police Districts', 
@@ -137,19 +239,57 @@ def workflow():
         task_logger.info(new_data_frame)
         task_logger.info(f"Transformation is completed succesfully and ready to be loaded")
         task_logger.info(f"DataFrame columns: {new_data_frame.columns.tolist()}")
+
+        date_format = '%m/%d/%Y'
+        date_time_format = '%m/%d/%Y %H:%M'
+
+        new_data_frame.rename(columns=column_names, inplace=True)
+
+        #convert all string columns to string type
+        for col in string_columms:
+            new_data_frame[col] = new_data_frame[col].astype(str)
+        
+        #convert all float columns to float types
+        for col in float_columns:
+            new_data_frame[col] = pd.to_numeric(new_data_frame[col], errors='coerce')
+
+        #convert all date columns to date types
+        for col in date_columns:
+            new_data_frame[col] = pd.to_datetime(new_data_frame[col], errors='coerce', format=date_format)
+        
+        #convert all date time columns to date time types
+        for col in date_time_columns:
+            new_data_frame[col] = pd.to_datetime(new_data_frame[col], format='mixed')
+        #new_data_frame['data_loaded_at'] = pd.to_datetime('now').strftime('%Y-%m-%d %H:%M:%S')
+
+        #convert all boolean columns to boolean types
+        for col in boolean_columns:
+            new_data_frame[col] = new_data_frame[col].astype(int)
+        
+        #drop an unknown date in the file_date column
+        new_df = new_data_frame.dropna(subset=['file_date'])
+        
+
+        logging.info(f"Transformed DataFrame columns: {new_df.columns.tolist()}")
+        logging.info(f"Transformed DataFrame info: {new_df.info()}")
        
 
-        return new_data_frame
+        # return new_data_frame
+
+        return new_df
+    
+
     
     @task()
-    def prepare_data_for_load(transformed_data):
+    def prepare_data_for_load(tranformed_data):
+        
         """
         This task prepares the data to be loaded into the database
         """
 
         key = 'transformed_eviction_data.csv'
 
-        s3_path = upload_to_s3(transform_dataframe=transformed_data, bucket_name=BUCKET_NAME, key=key)
+        s3_path = upload_to_s3(tranformed_data, bucket_name='dportfoliobucket', key=key)
 
         return s3_path
     
@@ -163,18 +303,15 @@ def workflow():
     @task()
     def load(s3_path, table_name):
 
-        load_to_redshift(s3_path=s3_path, table_name=table_name)
+        load_to_redshift(s3_path, table_name)
 
-
-        
-    
 
 
     #Initiaze_DB=database_initialization()
     create_table()
     extraction=extract()
     transformation=transform(extraction)
-    file_path = prepare_data_for_load(transformed_data=transformation)
+    file_path = prepare_data_for_load(transformation)
 
     #the goal is to load the cvs from s3 bucket to redshift 
     load(file_path,'eviction')
