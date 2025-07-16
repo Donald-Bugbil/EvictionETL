@@ -4,11 +4,11 @@ import pandas as pd
 import pendulum
 from airflow.decorators import task, dag
 import logging
-
+from database_config.database import engine
 from Clients.client import get_redshift_client, get_s3_client
 from aws_config.aws import  BUCKET_NAME
 from sqlalchemy.orm import Session
-
+from schemas.schema import Eviction
 from utilities.funtions import boolens, clean_zip, state, clean_city, extract_lat_lon, extract_lat_lon_from_shape, upload_to_s3, create_redshift_table, load_to_redshift
 from schemas.schema import Eviction
 import io
@@ -301,9 +301,58 @@ def workflow():
     
     #This task loads the clean and transformed data
     @task()
-    def load(s3_path, table_name):
+    def load(table: pd.DataFrame):
 
-        load_to_redshift(s3_path, table_name)
+        #load_to_redshift(s3_path, table_name)
+
+        list_objects = []
+
+        def create_objects(row):
+            new_object = Eviction(
+                eviction_id= row['eviction_id'],
+                address=row['address'],
+                city=row['city'],
+                state=row['state'],
+                eviction_notice_zipcode=row['eviction_notice_zipcode'],
+                file_date=row['file_date'],
+                non_payment=row['non_payment'],
+                breach=row['breach'],
+                nuisance=row['nuisance'],
+                illegal_use=row['illegal_use'],
+                failure_to_sign_renewal=row['failure_to_sign_renewal'],
+                access_denial=row['access_denial'],
+                unapproved_subtenant=row['unapproved_subtenant'],
+                owner_move_in=row['owner_move_in'],
+                demolition=row['demolition'],
+                capital_improvement=row['capital_improve'],
+                substantial_rehab=row['substantial_rehab'],
+                ellis_act_withdrawal=row['ellis_act_withdrawal'],
+                condo_conversion=row['condo_conversion'],
+                roomate_same_unit=row['roomate_same_unit'],
+                other_cause=row['other_cause'],
+                late_payments=row['late_payments'],
+                lead_remediation=row['lead_remediation'],
+                development=row['development'],
+                good_samaritan_ends=row['good_samaritan_ends'],
+                constraints_date=row['constraints_date'],
+                data_as_of=row['data_as_of'],
+                data_loaded_at=row['data_loaded_at'],
+                location_latitude=row['location_latitude'],
+                location_longitude=row['location_longitude'],
+                shape_latitude=row['shape_latitude'],
+                shape_longitude=row['shape_longitude']
+
+            )
+            list_objects.append(new_object)
+
+        
+
+        with Session(engine) as session:
+            table.apply(lambda row: create_objects(row), axis=1)
+            session.add_all(list_objects)
+
+            session.commit()
+
 
 
 

@@ -23,24 +23,24 @@ load_dotenv()
 
 # #RDS production connection
 # else:
-#     DRIVERNAME=os.environ['DRIVERNAME']
-#     HOST=os.environ['AWS_POSTGRES_HOST']
-#     PORT=os.environ['AWS_POSTGRES_PORT']
-#     USER=os.environ['AWS_POSTGRES_USER']
-#     PASSWORD=os.environ['AWS_POSTGRES_PASSWORD']
-#     DB=os.environ['AWS_POSTGRES_DB']
+DRIVERNAME=os.environ['DRIVERNAME']
+HOST=os.environ['AWS_POSTGRES_HOST']
+PORT=os.environ['AWS_POSTGRES_PORT']
+USER=os.environ['AWS_POSTGRES_USER']
+PASSWORD=os.environ['AWS_POSTGRES_PASSWORD']
+DB=os.environ['AWS_POSTGRES_DB']
 
-# #database configuration
-# database_configuration=URL.create(drivername=DRIVERNAME,
-#                                   username=USER, 
-#                                   password=PASSWORD,
-#                                   host=HOST,
-#                                   database=DB
-#                                   )
+#database configuration
+database_configuration=URL.create(drivername=DRIVERNAME,
+                                  username=USER, 
+                                  password=PASSWORD,
+                                  host=HOST,
+                                  database=DB
+                                  )
 
 
-# #start the engine
-# engine=create_engine(database_configuration)
+#start the engine
+engine=create_engine(database_configuration)
 
 #database initialization
 # def database_initialize():
