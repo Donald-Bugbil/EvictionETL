@@ -181,8 +181,38 @@ def load_to_redshift(s3_path, table_name):
 
 
     
-    
-
-
-
+column_names = {
+    'Eviction ID': 'eviction_id',
+    'Address': 'address',
+    'City': 'city',
+    'State': 'state',
+    'Eviction Notice Source Zipcode': 'eviction_notice_zipcode',
+    'File Date': 'file_date',
+    'Non Payment': 'non_payment',
+    'Breach': 'breach',
+    'Nuisance': 'nuisance',
+    'Illegal Use': 'illegal_use',
+    'Failure to Sign Renewal': 'failure_to_sign_renewal',
+    'Access Denial': 'access_denial',
+    'Unapproved Subtenant': 'unapproved_subtenant',
+    'Owner Move In': 'owner_move_in',
+    'Demolition': 'demolition',
+    'Capital Improvement': 'capital_improvement',
+    'Substantial Rehab': 'substantial_rehab',
+    'Ellis Act WithDrawal': 'ellis_act_withdrawal',
+    'Condo Conversion': 'condo_conversion',
+    'Roommate Same Unit': 'roommate_same_unit',
+    'Other Cause': 'other_cause',
+    'Late Payments': 'late_payments',
+    'Lead Remediation': 'lead_remediation',
+    'Development': 'development',
+    'Good Samaritan Ends': 'good_samaritan_ends',
+    'Constraints Date': 'constraints_date',
+    'data_as_of': 'data_as_of',
+    'data_loaded_at': 'data_loaded_at',
+    'Location_Latitude': 'location_latitude',
+    'Location_Longitude': 'location_longitude',
+    'Shape_Latitude': 'shape_latitude',
+    'Shape_Longitude': 'shape_longitude'
+    }
 

@@ -4,12 +4,12 @@ import pandas as pd
 import pendulum
 from airflow.decorators import task, dag
 import logging
-from database_config.database import engine
+from database_config.database import engine, database_initialize
 from Clients.client import get_redshift_client, get_s3_client
 from aws_config.aws import  BUCKET_NAME
 from sqlalchemy.orm import Session
 from schemas.schema import Eviction
-from utilities.funtions import boolens, clean_zip, state, clean_city, extract_lat_lon, extract_lat_lon_from_shape, upload_to_s3, create_redshift_table, load_to_redshift
+from utilities.funtions import boolens, clean_zip, state, clean_city, column_names, extract_lat_lon, extract_lat_lon_from_shape, upload_to_s3, create_redshift_table, load_to_redshift
 from schemas.schema import Eviction
 import io
 
@@ -17,9 +17,11 @@ import io
 #task logger
 task_logger=logging.getLogger('workflow.task')
 
-table_name = 'eviction'
+# table_name = 'eviction'
 
-new_data_frame = ''
+# new_data_frame = ''
+
+
 
 #  id=Column(Integer, primary_key=True, autoincrement=True)
 #     eviction_id=Column(String)
@@ -68,42 +70,6 @@ new_data_frame = ''
 #        'Shape_Latitude', 'Shape_Longitude'],
 #       dtype='object')
 
-column_names = {
-    'Eviction ID': 'eviction_id',
-    'Address': 'address',
-    'City': 'city',
-    'State': 'state',
-    'Eviction Notice Source Zipcode': 'eviction_notice_zipcode',
-    'File Date': 'file_date',
-    'Non Payment': 'non_payment',
-    'Breach': 'breach',
-    'Nuisance': 'nuisance',
-    'Illegal Use': 'illegal_use',
-    'Failure to Sign Renewal': 'failure_to_sign_renewal',
-    'Access Denial': 'access_denial',
-    'Unapproved Subtenant': 'unapproved_subtenant',
-    'Owner Move In': 'owner_move_in',
-    'Demolition': 'demolition',
-    'Capital Improvement': 'capital_improvement',
-    'Substantial Rehab': 'substantial_rehab',
-    'Ellis Act WithDrawal': 'ellis_act_withdrawal',
-    'Condo Conversion': 'condo_conversion',
-    'Roommate Same Unit': 'roommate_same_unit',
-    'Other Cause': 'other_cause',
-    'Late Payments': 'late_payments',
-    'Lead Remediation': 'lead_remediation',
-    'Development': 'development',
-    'Good Samaritan Ends': 'good_samaritan_ends',
-    'Constraints Date': 'constraints_date',
-    'data_as_of': 'data_as_of',
-    'data_loaded_at': 'data_loaded_at',
-    'Location_Latitude': 'location_latitude',
-    'Location_Longitude': 'location_longitude',
-    'Shape_Latitude': 'shape_latitude',
-    'Shape_Longitude': 'shape_longitude'
-
-}
-
 
 
 @dag(
@@ -122,7 +88,7 @@ def workflow():
     #establishing the database connection
     def database_initialization():
         try:
-            
+            database_initialize()
             task_logger.info(f'database is connected successfully:{True}')
             return True
         except Exception as e:
@@ -279,35 +245,11 @@ def workflow():
         return new_df
     
 
-    
     @task()
-    def prepare_data_for_load(tranformed_data):
-        
-        """
-        This task prepares the data to be loaded into the database
-        """
-
-        key = 'transformed_eviction_data.csv'
-
-        s3_path = upload_to_s3(tranformed_data, bucket_name='dportfoliobucket', key=key)
-
-        return s3_path
-    
-
-    @task()
-    def create_table():
-
-        create_redshift_table()
-    
-    #This task loads the clean and transformed data
-    @task()
-    def load(table: pd.DataFrame):
-
-        #load_to_redshift(s3_path, table_name)
-
+    def load(transform_data, database_state):
         list_objects = []
-
         def create_objects(row):
+
             new_object = Eviction(
                 eviction_id= row['eviction_id'],
                 address=row['address'],
@@ -324,11 +266,11 @@ def workflow():
                 unapproved_subtenant=row['unapproved_subtenant'],
                 owner_move_in=row['owner_move_in'],
                 demolition=row['demolition'],
-                capital_improvement=row['capital_improve'],
+                capital_improvement=row['capital_improvement'],
                 substantial_rehab=row['substantial_rehab'],
                 ellis_act_withdrawal=row['ellis_act_withdrawal'],
                 condo_conversion=row['condo_conversion'],
-                roomate_same_unit=row['roomate_same_unit'],
+                roommate_same_unit=row['roommate_same_unit'],
                 other_cause=row['other_cause'],
                 late_payments=row['late_payments'],
                 lead_remediation=row['lead_remediation'],
@@ -343,29 +285,33 @@ def workflow():
                 shape_longitude=row['shape_longitude']
 
             )
+
             list_objects.append(new_object)
 
-        
 
-        with Session(engine) as session:
-            table.apply(lambda row: create_objects(row), axis=1)
-            session.add_all(list_objects)
+        if database_state is True:
+            data_to_load=transform_data
+            task_logger.info(data_to_load)
+            task_logger.info(f'data is  ready to load')  
+            data_to_load.apply(lambda row: create_objects(row), axis=1)     
+                                   
+            with Session(engine) as session:
+                session.add_all(list_objects)
+                session.commit()
+                task_logger.info(f'data loaded successfully')
+                return "load complete"
 
-            session.commit()
+        else:
+            task_logger.warning(f'database not initialized skipping loading')
+            return "Skipped load due to database error"
 
 
 
 
-    #Initiaze_DB=database_initialization()
-    create_table()
-    extraction=extract()
-    transformation=transform(extraction)
-    file_path = prepare_data_for_load(transformation)
-
-    #the goal is to load the cvs from s3 bucket to redshift 
-    load(file_path,'eviction')
-
-    
+    Initiaze_DB=database_initialization()
+    Extraction=extract()
+    Transformation=transform(Extraction)
+    load(Transformation, Initiaze_DB)
 workflow()
 
 
