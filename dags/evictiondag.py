@@ -71,7 +71,7 @@ task_logger=logging.getLogger('workflow.task')
 #       dtype='object')
 
 
-
+#dag
 @dag(
     schedule='@daily',
     start_date=pendulum.datetime(2025,6,28,tz='UTC'),
