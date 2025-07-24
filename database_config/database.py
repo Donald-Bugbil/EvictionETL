@@ -17,8 +17,8 @@ if ENVIRONMENT=='development':
     PASSWORD=os.environ['POSTGRES_PASSWORD']
     USER=os.environ['POSTGRES_USER']
     DB=os.environ['POSTGRES_DB']
-    HOST=os.environ['HOST']
-    PORT=os.environ['AWS_POSTGRES_PORT']
+    HOST=os.environ['POSTGRES_HOST']
+    PORT=os.environ['POSTGRES_PORT']
 
 
 # #RDS production connection
@@ -39,9 +39,23 @@ database_configuration=URL.create(drivername=DRIVERNAME,
                                   port=PORT
                                   )
 
+print(f"DEBUG - Connection URL: {database_configuration}")
+
+# Test the engine creation with error handling
+try:
+    engine = create_engine(database_configuration)
+    print("DEBUG - Engine created successfully")
+    
+    # Test the actual connection
+    with engine.connect() as conn:
+        print("DEBUG - SQLAlchemy connection successful!")
+        
+except Exception as e:
+    print(f"DEBUG - SQLAlchemy connection failed: {e}")
+    raise
 
 #start the engine
-engine=create_engine(database_configuration)
+#engine=create_engine(database_configuration)
 
 #database initialization
 def database_initialize():

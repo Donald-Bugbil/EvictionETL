@@ -233,16 +233,16 @@ def workflow():
             new_data_frame[col] = new_data_frame[col].astype(int)
         
         #drop an unknown date in the file_date column
-        new_df = new_data_frame.dropna(subset=['file_date'])
-        
+        new_data_frame.dropna(subset=['file_date', 'data_loaded_at', 'data_as_of', 'constraints_date'], inplace=True)
 
-        logging.info(f"Transformed DataFrame columns: {new_df.columns.tolist()}")
-        logging.info(f"Transformed DataFrame info: {new_df.info()}")
+
+        logging.info(f"Transformed DataFrame columns: {new_data_frame.columns.tolist()}")
+        logging.info(f"Transformed DataFrame info: {new_data_frame.info()}")
        
 
         # return new_data_frame
 
-        return new_df
+        return new_data_frame
     
 
     @task()
